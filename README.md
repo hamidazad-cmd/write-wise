@@ -47,7 +47,7 @@ The program gives a score out of 100 based on:
 Clone this repository:
 
 ```bash
-git clone https://github.com/hamidazad-cmd/writewise.git
+git clone https://github.com/hamidazad-cmd/write-wise.git
 ```
 
 Move into the project folder:
