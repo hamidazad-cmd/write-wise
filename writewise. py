@@ -1,0 +1,303 @@
+import re
+import json
+from collections import Counter
+from datetime import datetime
+
+
+ACADEMIC_FILE = "academic_words.txt"
+REPORT_FILE = "reports.json"
+
+
+def main():
+    print("WriteWise - English Writing Analyzer")
+    print("-" * 40)
+
+    print("Paste your writing:")
+
+    lines = []
+
+    while True:
+        line = input()
+
+        if line == "":
+            break
+
+        lines.append(line)
+
+    text = "\n".join(lines)
+
+    results = analyze_text(text)
+
+    print("\nREPORT")
+    print("-" * 40)
+
+    print(f"Words: {results['words']}")
+    print(f"Sentences: {results['sentences']}")
+    print(
+        f"Average sentence length: "
+        f"{results['average_sentence_length']} words"
+    )
+
+    print("\nRepeated words:")
+
+    if results["repeated_words"]:
+        for word, count in results["repeated_words"]:
+            print(f"- {word}: {count} times")
+    else:
+        print("None")
+
+    academic = results["academic_words"]
+
+    print("\nAcademic Vocabulary:")
+    print(f"Academic words used: {academic['count']}")
+    print(
+        f"Academic vocabulary percentage: "
+        f"{academic['percentage']}%"
+    )
+
+    if academic["words"]:
+        print("Words found:")
+        for word in academic["words"]:
+            print(f"- {word}")
+    else:
+        print("None")
+
+    score = calculate_score(results)
+
+    print(f"\nWriting Score: {score}/100")
+
+    print("\nFeedback:")
+
+    for item in results["feedback"]:
+        print(f"- {item}")
+
+    save_report(results)
+
+
+def analyze_text(text):
+    words = extract_words(text)
+
+    results = {
+        "words": len(words),
+        "sentences": count_sentences(text),
+        "average_sentence_length": average_sentence_length(text),
+        "repeated_words": find_repeated_words(words),
+        "academic_words": find_academic_words(words)
+    }
+
+    results["feedback"] = generate_feedback(results)
+
+    return results
+
+
+def extract_words(text):
+    return re.findall(r"[a-zA-Z]+", text.lower())
+
+
+def count_sentences(text):
+    return len(re.findall(r"[.!?]", text))
+
+
+def average_sentence_length(text):
+    sentences = count_sentences(text)
+
+    if sentences == 0:
+        return 0
+
+    return round(len(extract_words(text)) / sentences, 2)
+
+
+def find_repeated_words(words):
+
+    stop_words = {
+        "the", "a", "an", "is", "are", "was", "were",
+        "and", "or", "but", "of", "to", "in", "on",
+        "for", "with", "this", "that", "these", "those",
+        "it", "its", "as", "at", "by",
+        "has", "have", "had", "also",
+        "can", "will", "would", "should",
+        "people", "using", "use"
+    }
+
+    counter = Counter(words)
+
+    repeated = []
+
+    for word, count in counter.items():
+
+        if word not in stop_words and count > 1:
+            repeated.append((word, count))
+
+    repeated.sort(
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+    return repeated[:5]
+
+
+def load_academic_words():
+
+    try:
+        with open(ACADEMIC_FILE) as file:
+
+            return {
+                word.strip().lower()
+                for word in file
+                if word.strip()
+            }
+
+    except FileNotFoundError:
+
+        return set()
+
+
+def find_academic_words(words):
+
+    academic = load_academic_words()
+
+    found = [
+        word
+        for word in words
+        if word in academic
+    ]
+
+    return {
+        "count": len(found),
+        "percentage": round(
+            (len(found) / len(words)) * 100, 2
+        ) if words else 0,
+        "words": sorted(set(found))
+    }
+
+
+def generate_feedback(results):
+
+    feedback = []
+
+    if results["academic_words"]["count"] >= 5:
+
+        feedback.append(
+            "✓ Good use of academic vocabulary."
+        )
+
+
+    if results["average_sentence_length"] >= 10:
+
+        feedback.append(
+            "✓ Your sentences show good complexity."
+        )
+
+
+    if results["average_sentence_length"] > 25:
+
+        feedback.append(
+            "⚠ Some sentences are too long. "
+            "Try splitting them."
+        )
+
+
+    if results["repeated_words"]:
+
+        word = results["repeated_words"][0][0]
+
+        feedback.append(
+            f"⚠ You repeat '{word}' often. "
+            "Try using synonyms."
+        )
+
+
+    if results["academic_words"]["count"] < 3:
+
+        feedback.append(
+            "⚠ Try adding more academic vocabulary."
+        )
+
+
+    return feedback
+
+
+
+def calculate_score(results):
+
+    score = 0
+
+
+    # Vocabulary
+    if results["academic_words"]["count"] >= 10:
+
+        score += 35
+
+    elif results["academic_words"]["count"] >= 5:
+
+        score += 25
+
+    else:
+
+        score += 15
+
+
+    # Sentence structure
+    length = results["average_sentence_length"]
+
+    if 12 <= length <= 25:
+
+        score += 35
+
+    else:
+
+        score += 20
+
+
+    # Repetition
+
+    if len(results["repeated_words"]) == 0:
+
+        score += 30
+
+    else:
+
+        score += 20
+
+
+    return score
+
+
+
+def save_report(results):
+
+    report = {
+
+        "date": str(datetime.now()),
+
+        "results": results
+
+    }
+
+
+    try:
+
+        with open(REPORT_FILE) as file:
+
+            reports = json.load(file)
+
+
+    except (FileNotFoundError, json.JSONDecodeError):
+
+        reports = []
+
+
+    reports.append(report)
+
+
+    with open(REPORT_FILE, "w") as file:
+
+        json.dump(
+            reports,
+            file,
+            indent=4
+        )
+
+
+if __name__ == "__main__":
+    main()
